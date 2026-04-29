@@ -12,7 +12,12 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://task1-eta-nine.vercel.app",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
