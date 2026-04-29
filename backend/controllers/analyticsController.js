@@ -1,11 +1,11 @@
 import Lead from "../models/Lead.js";
-import { runPythonAnalysis } from "../utils/runPython.js";
+import axios from "axios";
+
 
 export const getAnalytics = async (req, res) => {
   try {
     const leads = await Lead.find();
 
-    // Convert Mongo docs to plain JSON
     const cleanData = leads.map((lead) => ({
       name: lead.name,
       city: lead.city,
@@ -15,10 +15,19 @@ export const getAnalytics = async (req, res) => {
       createdAt: lead.createdAt,
     }));
 
-    const insights = await runPythonAnalysis(cleanData);
+    // 🔥 CALL FLASK SERVER (NOT PYTHON SCRIPT)
+    const response = await axios.post(
+      "https://task1-1-eg06.onrender.com/analyze",
+      cleanData
+    );
 
-    res.json(insights);
+    return res.json(response.data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Analytics Error:", error.message);
+
+    return res.status(500).json({
+      message: "Analytics service failed",
+      error: error.message,
+    });
   }
 };
