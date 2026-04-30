@@ -5,8 +5,11 @@ export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     name: "",
+    mobile: "",
     email: "",
     status: "New",
     city: "",
@@ -32,15 +35,47 @@ export default function Leads() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const resetForm = () => {
+    setForm({
+      name: "",
+      mobile: "",
+      email: "",
+      status: "New",
+      city: "",
+      service: "",
+    });
+    setEditingId(null);
+  };
+
+  // CREATE + UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      await API.post("/leads", form);
-      setForm({ name: "", email: "", status: "New", city: "", service: "" });
+      if (editingId) {
+        await API.put(`/leads/${editingId}`, form);
+      } else {
+        await API.post("/leads", form);
+      }
+
+      resetForm();
       fetchLeads();
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // EDIT
+  const handleEdit = (lead) => {
+    setForm({
+      name: lead.name || "",
+      mobile: lead.mobile || "",
+      email: lead.email || "",
+      status: lead.status || "New",
+      city: lead.city || "",
+      service: lead.service || "",
+    });
+    setEditingId(lead._id || lead.id);
   };
 
   return (
@@ -48,7 +83,6 @@ export default function Leads() {
 
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
-
         <div>
           <h1 className="text-2xl font-semibold">Leads</h1>
           <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -64,14 +98,13 @@ export default function Leads() {
         </button>
       </div>
 
-      {/* GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
 
         {/* FORM */}
         <div className="bg-slate-200/70 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-300/40 dark:border-slate-700/40 rounded-2xl p-6 shadow-xl sticky top-6 h-fit">
 
           <h2 className="text-sm font-semibold mb-4">
-            Create Lead
+            {editingId ? "Update Lead" : "Create Lead"}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -81,6 +114,14 @@ export default function Leads() {
               value={form.name}
               onChange={handleChange}
               placeholder="Name"
+              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
+            />
+
+            <input
+              name="mobile"
+              value={form.mobile}
+              onChange={handleChange}
+              placeholder="Mobile"
               className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
             />
 
@@ -124,52 +165,57 @@ export default function Leads() {
               type="submit"
               className="w-full py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition"
             >
-              Save Lead
+              {editingId ? "Update Lead" : "Save Lead"}
             </button>
 
-          </form>
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="w-full py-2 rounded-lg bg-slate-500 hover:bg-slate-600 text-white transition"
+              >
+                Cancel Edit
+              </button>
+            )}
 
+          </form>
         </div>
 
         {/* TABLE */}
         <div className="bg-slate-200/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-300/40 dark:border-slate-800 rounded-xl shadow-lg overflow-hidden">
 
-          {/* HEADER */}
           <div className="px-5 py-4 border-b border-slate-300/40 dark:border-slate-800 flex justify-between items-center bg-slate-300/40 dark:bg-slate-950/40">
-
             <h2 className="text-sm font-semibold">All Leads</h2>
-
             <span className="text-xs text-slate-600 dark:text-slate-400">
               {leads.length} records
             </span>
-
           </div>
 
-          {/* TABLE BODY */}
           <div className="overflow-x-auto">
-
             {loading ? (
               <div className="p-6 text-sm text-slate-500">Loading leads...</div>
             ) : (
               <table className="w-full text-sm">
-
                 <thead className="text-left text-slate-600 dark:text-slate-400 border-b border-slate-300/40 dark:border-slate-800">
                   <tr>
                     <th className="p-3">Name</th>
+                    <th>Mobile</th>
                     <th>Email</th>
                     <th>City</th>
                     <th>Service</th>
                     <th>Status</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {leads.map((lead, i) => (
+                  {leads.map((lead) => (
                     <tr
-                      key={i}
+                      key={lead._id || lead.id}
                       className="border-b border-slate-200/40 dark:border-slate-800 hover:bg-slate-300/30 dark:hover:bg-slate-800/40 transition"
                     >
                       <td className="p-3">{lead.name}</td>
+                      <td>{lead.mobile}</td>
                       <td>{lead.email}</td>
                       <td>{lead.city}</td>
                       <td>{lead.service}</td>
@@ -178,17 +224,23 @@ export default function Leads() {
                           {lead.status}
                         </span>
                       </td>
+                      <td>
+                        <button
+                          onClick={() => handleEdit(lead)}
+                          className="px-3 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Edit
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
 
               </table>
             )}
-
           </div>
 
         </div>
-
       </div>
     </div>
   );

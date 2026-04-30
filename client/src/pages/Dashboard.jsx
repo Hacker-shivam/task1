@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useTransition } from "react";
 import API from "../services/api";
 import {
   PieChart,
@@ -14,39 +14,51 @@ import {
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
-
-  const [dark, setDark] = useState(
+  const [dark, setDark] = useState(() =>
     localStorage.getItem("theme") === "dark"
   );
 
-  const orderedStatus = ["New", "Interested", "Converted", "Rejected"];
+  const [isPending, startTransition] = useTransition();
 
+  const orderedStatus = useMemo(
+    () => ["New", "Interested", "Converted", "Rejected"],
+    []
+  );
+
+  /* ---------------- THEME OPTIMIZED ---------------- */
   useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
+    const root = document.documentElement;
+
+    requestAnimationFrame(() => {
+      if (dark) {
+        root.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+      } else {
+        root.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+      }
+    });
   }, [dark]);
 
+  /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
-    load();
+    const id = setTimeout(load, 0);
+    return () => clearTimeout(id);
   }, []);
 
   const load = async () => {
     const cached = sessionStorage.getItem("dashboard");
 
     if (cached) {
-      setData(JSON.parse(cached));
-      fetchFresh();
+      startTransition(() => setData(JSON.parse(cached)));
+      requestIdleCallback(fetchFresh);
       return;
     }
 
     fetchFresh();
   };
 
+  /* ---------------- API LAYER ---------------- */
   const fetchFresh = async () => {
     try {
       const [t, s, c, srv, ins] = await Promise.all([
@@ -65,24 +77,72 @@ export default function Dashboard() {
         insights: ins.data,
       };
 
-      setData(newData);
       sessionStorage.setItem("dashboard", JSON.stringify(newData));
+
+      startTransition(() => {
+        setData(newData);
+      });
     } catch (err) {
       console.error(err);
     }
   };
 
+  /* ---------------- DERIVED DATA ---------------- */
+  const sortedStatus = useMemo(() => {
+    if (!data?.status) return [];
+
+    return orderedStatus.map(
+      (name) =>
+        data.status.find((s) => s._id === name) || {
+          _id: name,
+          count: 0,
+        }
+    );
+  }, [data, orderedStatus]);
+
+  const chartColors = useMemo(
+    () =>
+      dark
+        ? ["#818cf8", "#4ade80", "#fbbf24", "#f87171"]
+        : ["#6366f1", "#22c55e", "#f59e0b", "#ef4444"],
+    [dark]
+  );
+
+  /* ---------------- AI INSIGHTS (FIXED + ADDED) ---------------- */
+  const aiInsights = useMemo(() => {
+    if (!data?.insights) return null;
+
+    const insights = data.insights;
+
+    const topCity = insights.top_city;
+    const topService = insights.top_service;
+    const conversion = insights.conversion_rate || 0;
+
+    let trend = "Stable 📊";
+    if (conversion >= 60) trend = "Strong Growth 🚀";
+    else if (conversion >= 30) trend = "Moderate Growth 📈";
+    else trend = "Needs Attention ⚠";
+
+    let recommendation = "";
+    if (conversion < 30) {
+      recommendation =
+        "Improve follow-ups and lead quality. Focus on faster response time.";
+    } else if (topService) {
+      recommendation = `Scale marketing for ${topService} service.`;
+    }
+
+    return {
+      summary: `Most leads are coming from ${topCity}. ${topService} is the best performing service.`,
+      trend,
+      recommendation,
+      confidence: Math.min(95, Math.max(55, conversion + 20)),
+    };
+  }, [data]);
+
+  /* ---------------- LOADING ---------------- */
   if (!data) return <Skeleton />;
 
   const { total, status, city, service, insights } = data;
-
-  const sortedStatus = orderedStatus.map(
-    (name) => status.find((s) => s._id === name) || { _id: name, count: 0 }
-  );
-
-  const COLORS_LIGHT = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444"];
-  const COLORS_DARK = ["#818cf8", "#4ade80", "#fbbf24", "#f87171"];
-  const chartColors = dark ? COLORS_DARK : COLORS_LIGHT;
 
   return (
     <div className="
@@ -125,11 +185,12 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* INSIGHTS */}
-      {insights && (
+      {/* AI INSIGHTS */}
+      {insights && aiInsights && (
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-lg mb-8">
+
           <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
-            Insights
+            AI Insights 🤖
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -138,11 +199,25 @@ export default function Dashboard() {
             <InsightBox label="Conversion Rate" value={`${insights.conversion_rate}%`} />
           </div>
 
-          <p className="text-gray-600 dark:text-gray-300 text-sm">
-            Most leads are coming from <b>{insights.top_city}</b>. Top service is{" "}
-            <b>{insights.top_service}</b>. Conversion rate is{" "}
-            <b>{insights.conversion_rate}%</b>.
-          </p>
+          <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-100 via-sky-100 to-purple-100 dark:from-gray-700 dark:to-gray-800">
+
+            <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">
+              <b>AI Summary:</b> {aiInsights.summary}
+            </p>
+
+            <p className="text-sm mb-2">
+              <b>Trend:</b> {aiInsights.trend}
+            </p>
+
+            <p className="text-sm mb-2 text-gray-600 dark:text-gray-300">
+              <b>Recommendation:</b> {aiInsights.recommendation}
+            </p>
+
+            <p className="text-xs text-gray-500">
+              Confidence Score: {aiInsights.confidence}%
+            </p>
+
+          </div>
         </div>
       )}
 
@@ -153,17 +228,11 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie data={status} dataKey="count" nameKey="_id">
-                {status.map((entry, index) => (
-                  <Cell key={index} fill={chartColors[index % chartColors.length]} />
+                {status.map((_, i) => (
+                  <Cell key={i} fill={chartColors[i % chartColors.length]} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: dark ? "#1f2937" : "#fff",
-                  border: "none",
-                  color: dark ? "#fff" : "#000",
-                }}
-              />
+              <Tooltip />
             </PieChart>
           </ResponsiveContainer>
         </ChartBox>
@@ -171,17 +240,12 @@ export default function Dashboard() {
         <ChartBox title="City Distribution">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={city}>
-              <XAxis dataKey="_id" stroke={dark ? "#0000FF" : "#0000FF"} />
-              <YAxis stroke={dark ? "#000000" : "#0000000"} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: dark ? "#1f2937" : "#fff",
-                  border: "none",
-                }}
-              />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {city.map((entry, index) => (
-                  <Cell key={index} fill={chartColors[index % chartColors.length]} />
+              <XAxis dataKey="_id" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="count">
+                {city.map((_, i) => (
+                  <Cell key={i} fill={chartColors[i % chartColors.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -191,17 +255,12 @@ export default function Dashboard() {
         <ChartBox title="Service Distribution">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={service}>
-              <XAxis dataKey="_id" stroke={dark ? "#0000FF" : "#0000FF"} />
-              <YAxis stroke={dark ? "#000000" : "#000000"} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: dark ? "#1f2937" : "#fff",
-                  border: "none",
-                }}
-              />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {service.map((entry, index) => (
-                  <Cell key={index} fill={chartColors[index % chartColors.length]} />
+              <XAxis dataKey="_id" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="count">
+                {service.map((_, i) => (
+                  <Cell key={i} fill={chartColors[i % chartColors.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -214,6 +273,24 @@ export default function Dashboard() {
 }
 
 /* ---------------- COMPONENTS ---------------- */
+
+function Skeleton() {
+  return (
+    <div className="p-6 animate-pulse space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-60 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function PremiumCard({ title, value, gradient }) {
   return (
@@ -228,7 +305,9 @@ function InsightBox({ label, value }) {
   return (
     <div className="bg-gradient-to-r from-sky-200 via-sky-300 to-indigo-300 dark:bg-gray-800 rounded-xl p-4 shadow">
       <p className="text-gray-600 text-xs">{label}</p>
-      <p className="text-lg font-semibold text-gray-800 dark:text-white">{value}</p>
+      <p className="text-lg font-semibold text-gray-800 dark:text-white">
+        {value}
+      </p>
     </div>
   );
 }
@@ -240,24 +319,6 @@ function ChartBox({ title, children }) {
         {title}
       </h3>
       {children}
-    </div>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div className="p-6 animate-pulse space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-60 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-        ))}
-      </div>
     </div>
   );
 }
