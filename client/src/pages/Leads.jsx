@@ -4,18 +4,19 @@ import API from "../services/api";
 export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     name: "",
     mobile: "",
     email: "",
-    status: "New",
     city: "",
     service: "",
+    budget: "",
+    status: "New",
   });
 
+  // FETCH LEADS
   const fetchLeads = async () => {
     try {
       const res = await API.get("/leads");
@@ -31,18 +32,21 @@ export default function Leads() {
     fetchLeads();
   }, []);
 
+  // HANDLE INPUT
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // RESET FORM
   const resetForm = () => {
     setForm({
       name: "",
       mobile: "",
       email: "",
-      status: "New",
       city: "",
       service: "",
+      budget: "",
+      status: "New",
     });
     setEditingId(null);
   };
@@ -65,16 +69,18 @@ export default function Leads() {
     }
   };
 
-  // EDIT
+  // EDIT LEAD
   const handleEdit = (lead) => {
     setForm({
       name: lead.name || "",
       mobile: lead.mobile || "",
       email: lead.email || "",
-      status: lead.status || "New",
       city: lead.city || "",
       service: lead.service || "",
+      budget: lead.budget || "",
+      status: lead.status || "New",
     });
+
     setEditingId(lead._id || lead.id);
   };
 
@@ -82,17 +88,15 @@ export default function Leads() {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-4 sm:px-6 lg:px-10 py-6">
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
+      <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-semibold">Leads</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Manage and track your leads efficiently
-          </p>
+          <p className="text-sm text-slate-500">Manage your customer leads</p>
         </div>
 
         <button
           onClick={fetchLeads}
-          className="px-4 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-900/60 hover:bg-slate-300/70 dark:hover:bg-slate-800 transition"
+          className="px-4 py-2 text-sm rounded-lg bg-slate-200 dark:bg-slate-800 hover:opacity-80"
         >
           Refresh
         </button>
@@ -101,7 +105,7 @@ export default function Leads() {
       <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
 
         {/* FORM */}
-        <div className="bg-slate-200/70 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-300/40 dark:border-slate-700/40 rounded-2xl p-6 shadow-xl sticky top-6 h-fit">
+        <div className="bg-slate-200/70 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 rounded-2xl p-6 shadow-xl sticky top-6 h-fit">
 
           <h2 className="text-sm font-semibold mb-4">
             {editingId ? "Update Lead" : "Create Lead"}
@@ -109,62 +113,35 @@ export default function Leads() {
 
           <form onSubmit={handleSubmit} className="space-y-3">
 
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Name"
-              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
-            />
+            <input name="name" value={form.name} onChange={handleChange} placeholder="Name"
+              className="input" />
 
-            <input
-              name="mobile"
-              value={form.mobile}
-              onChange={handleChange}
-              placeholder="Mobile"
-              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
-            />
+            <input name="mobile" value={form.mobile} onChange={handleChange} placeholder="Mobile"
+              className="input" />
 
-            <input
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="Email"
-              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
-            />
+            <input name="email" value={form.email} onChange={handleChange} placeholder="Email"
+              className="input" />
 
-            <input
-              name="city"
-              value={form.city}
-              onChange={handleChange}
-              placeholder="City"
-              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
-            />
+            <input name="city" value={form.city} onChange={handleChange} placeholder="City"
+              className="input" />
 
-            <input
-              name="service"
-              value={form.service}
-              onChange={handleChange}
-              placeholder="Service"
-              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
-            />
+            <input name="service" value={form.service} onChange={handleChange} placeholder="Service"
+              className="input" />
 
-            <select
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              className="w-full p-2 rounded-lg bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-700 outline-none"
-            >
+            <input name="budget" value={form.budget} onChange={handleChange} placeholder="Budget"
+              type="number"
+              className="input" />
+
+            <select name="status" value={form.status} onChange={handleChange}
+              className="input">
+
               <option>New</option>
               <option>Interested</option>
               <option>Converted</option>
               <option>Rejected</option>
             </select>
 
-            <button
-              type="submit"
-              className="w-full py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition"
-            >
+            <button className="w-full py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white">
               {editingId ? "Update Lead" : "Save Lead"}
             </button>
 
@@ -172,9 +149,9 @@ export default function Leads() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="w-full py-2 rounded-lg bg-slate-500 hover:bg-slate-600 text-white transition"
+                className="w-full py-2 rounded-lg bg-slate-500 hover:bg-slate-600 text-white"
               >
-                Cancel Edit
+                Cancel
               </button>
             )}
 
@@ -182,27 +159,28 @@ export default function Leads() {
         </div>
 
         {/* TABLE */}
-        <div className="bg-slate-200/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-300/40 dark:border-slate-800 rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-slate-200/60 dark:bg-slate-900/60 border border-slate-300/40 dark:border-slate-800 rounded-xl shadow-lg overflow-hidden">
 
-          <div className="px-5 py-4 border-b border-slate-300/40 dark:border-slate-800 flex justify-between items-center bg-slate-300/40 dark:bg-slate-950/40">
+          <div className="px-5 py-4 border-b flex justify-between bg-slate-300/40 dark:bg-slate-950/40">
             <h2 className="text-sm font-semibold">All Leads</h2>
-            <span className="text-xs text-slate-600 dark:text-slate-400">
-              {leads.length} records
-            </span>
+            <span className="text-xs text-slate-500">{leads.length} records</span>
           </div>
 
           <div className="overflow-x-auto">
+
             {loading ? (
-              <div className="p-6 text-sm text-slate-500">Loading leads...</div>
+              <div className="p-6 text-sm text-slate-500">Loading...</div>
             ) : (
               <table className="w-full text-sm">
-                <thead className="text-left text-slate-600 dark:text-slate-400 border-b border-slate-300/40 dark:border-slate-800">
+
+                <thead className="text-left border-b text-slate-500">
                   <tr>
                     <th className="p-3">Name</th>
                     <th>Mobile</th>
                     <th>Email</th>
                     <th>City</th>
                     <th>Service</th>
+                    <th>Budget</th>
                     <th>Status</th>
                     <th>Action</th>
                   </tr>
@@ -210,38 +188,56 @@ export default function Leads() {
 
                 <tbody>
                   {leads.map((lead) => (
-                    <tr
-                      key={lead._id || lead.id}
-                      className="border-b border-slate-200/40 dark:border-slate-800 hover:bg-slate-300/30 dark:hover:bg-slate-800/40 transition"
-                    >
+                    <tr key={lead._id || lead.id}
+                      className="border-b hover:bg-slate-300/30 dark:hover:bg-slate-800/40">
+
                       <td className="p-3">{lead.name}</td>
                       <td>{lead.mobile}</td>
                       <td>{lead.email}</td>
                       <td>{lead.city}</td>
                       <td>{lead.service}</td>
+                      <td>₹{lead.budget}</td>
+
                       <td>
-                        <span className="px-2 py-1 text-xs rounded-md bg-slate-300/50 dark:bg-slate-800">
+                        <span className="px-2 py-1 text-xs rounded bg-slate-300 dark:bg-slate-800">
                           {lead.status}
                         </span>
                       </td>
+
                       <td>
                         <button
                           onClick={() => handleEdit(lead)}
-                          className="px-3 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white"
+                          className="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                         >
                           Edit
                         </button>
                       </td>
+
                     </tr>
                   ))}
                 </tbody>
 
               </table>
             )}
-          </div>
 
+          </div>
         </div>
       </div>
+
+      {/* INPUT STYLE FIX */}
+      <style>
+        {`
+          .input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 10px;
+            outline: none;
+            background: rgba(148,163,184,0.15);
+            border: 1px solid rgba(148,163,184,0.3);
+          }
+        `}
+      </style>
+
     </div>
   );
 }
